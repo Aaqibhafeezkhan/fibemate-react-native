@@ -38,7 +38,17 @@ jobs:
         # passes on a clean machine. Lint + type-check + test are all hard gates.
         run: npx tsc --noEmit
 
+      - name: Verify Jest discovers the expected test suite (HARD gate)
+        # Keep this floor in one place; update it intentionally when the suite changes.
+        run: |
+          test_files="$(npx jest --listTests)"
+          test_count="$(printf '%s\n' "$test_files" | awk 'NF { count++ } END { print count + 0 }')"
+          if [ "$test_count" -lt 2 ]; then
+            echo "::error::Jest collected $test_count test file(s); expected at least 2. Check testMatch and testPathIgnorePatterns."
+            exit 1
+          fi
+          echo "Jest collected $test_count test files."
+
       - name: Unit tests (jest, HARD gate)
-        # jest.config.js sets preset '@react-native/jest-preset', now present in
-        # devDependencies (RN 0.86). __tests__/App.test.tsx runs in CI.
-        run: npm test -- --passWithNoTests
+        # Do not use --passWithNoTests in CI: an empty test suite must fail.
+        run: npm test -- --ci
